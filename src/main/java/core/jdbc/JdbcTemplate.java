@@ -27,10 +27,6 @@ public class JdbcTemplate {
         }
     }
 
-    public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... values) {
-        return query(sql, rowMapper, createPrepareStatementSetter(values));
-    }
-
     public <T> List<T> query(String sql, RowMapper<T> rowMapper, PreparedStatementSetter preparedStatementSetter) {
         List<T> queryResult = new ArrayList<>();
 
@@ -49,33 +45,22 @@ public class JdbcTemplate {
         }
     }
 
+    public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... values) {
+        return query(sql, rowMapper, createPrepareStatementSetter(values));
+    }
+
     public <T> T queryForObject(String sql, RowMapper<T> rowMapper, Object... values) {
-        return queryForObject(sql, rowMapper, createPrepareStatementSetter(values));
+        List<T> objs = query(sql, rowMapper, createPrepareStatementSetter(values));
+        if (objs.isEmpty())
+            return null;
+        return objs.get(0);
     }
 
-    public <T> T queryForObject(String sql, RowMapper<T> rowMapper, PreparedStatementSetter preparedStatementSetter) {
-        try (Connection con = ConnectionManager.getConnection()) {
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            preparedStatementSetter.setValues(pstmt);
-
-            ResultSet rs = pstmt.executeQuery();
-
-            T obj = null;
-            if (rs.next()) {
-                obj = rowMapper.mapRow(rs);
-            }
-
-            return obj;
-        } catch (SQLException e) {
-            throw new DataAccessException(e.getMessage());
-        }
-    }
 
     private PreparedStatementSetter createPrepareStatementSetter(Object... values) {
         PreparedStatementSetter preparedStatementSetter = pstmt -> {
-            for (int i = 0; i < values.length; i++) {
+            for (int i = 0; i < values.length; i++)
                 pstmt.setObject(i + 1, values[i]);
-            }
         };
 
         return preparedStatementSetter;
